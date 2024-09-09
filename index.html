@@ -1,195 +1,188 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	<title>Squawkzer</title>
-	<style>
-		/* CSS styles */
-	</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Squawkzer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f8ff;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+        #game-container {
+            width: 90%;
+            margin: 0 auto;
+            background-color: #e6f7ff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        #game-container h1 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+        #game-info {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+        .game-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .game-btn:hover {
+            background-color: #0056b3;
+        }
+        #permission-prompt {
+            padding: 10px;
+            background-color: #ffeb3b;
+            margin: 20px auto;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
-	<div id="game-container">
-		<!-- Game elements -->
-	</div>
+    <div id="game-container">
+        <h1>Squawkzer</h1>
+        <div id="game-info">
+            <p>Current Turn: <span id="currentTurn">0</span></p>
+            <p>Resources: Seeds: <span id="seeds">0</span>, Worms: <span id="worms">0</span>, Feathers: <span id="feathers">0</span></p>
+        </div>
+        <button class="game-btn" onclick="toggleMusic()">Toggle Music</button>
+        <button class="game-btn" onclick="toggleSoundEffects()">Toggle Sound Effects</button>
+        <button class="game-btn" onclick="levelUp()">Level Up</button>
+        <button class="game-btn" onclick="shareProgress()">Share Progress</button>
+        <button class="game-btn" onclick="showLeaderboards()">Show Leaderboards</button>
+        <button class="game-btn" onclick="showSettings()">Settings</button>
+    </div>
 
-	<script>
-		// Game mechanics and storage implementation
-		const gameData = {
-			birds: [],
-			resources: {
-				seeds: 0,
-				worms: 0,
-				feathers: 0
-			},
-			currentTurn: 0,
-			enemyBirds: [],
-			levels: [],
-			settings: {
-				music: true,
-				soundEffects: true
-			},
-			world: {
-				region: 'Skyhaven',
-				location: 'Nestville'
-			}
-		};
+    <div id="permission-prompt" style="display: none;">Allow Squawkzer to store game data locally? Click to allow.</div>
 
-		// Load game data from local storage
-		function loadGameData() {
-			const storedData = localStorage.getItem('squawkzerGameData');
-			if (storedData) {
-				gameData = JSON.parse(storedData);
-			}
-		}
+    <script>
+        // Initial game data
+        let gameData = {
+            birds: [],
+            resources: {
+                seeds: 0,
+                worms: 0,
+                feathers: 0
+            },
+            currentTurn: 0,
+            enemyBirds: [],
+            levels: [],
+            settings: {
+                music: true,
+                soundEffects: true
+            },
+            world: {
+                region: 'Skyhaven',
+                location: 'Nestville'
+            }
+        };
 
-		// Save game data to local storage
-		function saveGameData() {
-			localStorage.setItem('squawkzerGameData', JSON.stringify(gameData));
-		}
+        // Load game data from local storage
+        function loadGameData() {
+            const storedData = localStorage.getItem('squawkzerGameData');
+            if (storedData) {
+                gameData = JSON.parse(storedData);
+            }
+        }
 
-		// Request storage permission
-		if (typeof Storage !== 'undefined') {
-			if (localStorage.getItem('squawkzerPermission') !== 'granted') {
-				const permissionPrompt = document.createElement('div');
-				permissionPrompt.innerHTML = 'Allow Squawkzer to store game data locally?';
-				permissionPrompt.addEventListener('click', () => {
-					localStorage.setItem('squawkzerPermission', 'granted');
-					loadGameData();
-				});
-				document.body.appendChild(permissionPrompt);
-			} else {
-				loadGameData();
-			}
-		}
+        // Save game data to local storage
+        function saveGameData() {
+            localStorage.setItem('squawkzerGameData', JSON.stringify(gameData));
+        }
 
-		// Game loop
-		setInterval(() => {
-			takeTurn();
-			saveGameData();
-		}, 1000); // 1 second interval
+        // Request storage permission
+        function requestStoragePermission() {
+            if (typeof Storage !== 'undefined') {
+                if (localStorage.getItem('squawkzerPermission') !== 'granted') {
+                    document.getElementById('permission-prompt').style.display = 'block';
+                    document.getElementById('permission-prompt').addEventListener('click', () => {
+                        localStorage.setItem('squawkzerPermission', 'granted');
+                        document.getElementById('permission-prompt').style.display = 'none';
+                        loadGameData();
+                    });
+                } else {
+                    loadGameData();
+                }
+            }
+        }
 
-		// Additional features implementation
-		function toggleMusic() {
-			gameData.settings.music = !gameData.settings.music;
-			saveGameData();
-		}
+        // Game loop
+        function gameLoop() {
+            takeTurn();
+            saveGameData();
+            updateUI();
+        }
 
-		function toggleSoundEffects() {
-			gameData.settings.soundEffects = !gameData.settings.soundEffects;
-			saveGameData();
-		}
+        // Take a turn in the game
+        function takeTurn() {
+            gameData.currentTurn++;
+            // Add logic for turns
+        }
 
-		function levelUp() {
-			// Level up logic, unlocking new birds, abilities, and resources
-			saveGameData();
-		}
+        // Toggle music
+        function toggleMusic() {
+            gameData.settings.music = !gameData.settings.music;
+            saveGameData();
+            alert("Music toggled: " + (gameData.settings.music ? "On" : "Off"));
+        }
 
-		function shareProgress() {
-			// Share progress logic
-		}
+        // Toggle sound effects
+        function toggleSoundEffects() {
+            gameData.settings.soundEffects = !gameData.settings.soundEffects;
+            saveGameData();
+            alert("Sound Effects toggled: " + (gameData.settings.soundEffects ? "On" : "Off"));
+        }
 
-		function showLeaderboards() {
-			// Leaderboards logic
-		}
+        // Level up function
+        function levelUp() {
+            // Add level-up logic here
+            alert("Leveled Up!");
+            saveGameData();
+        }
 
-		function showSettings() {
-			// Settings logic
-		}
+        // Share progress function
+        function shareProgress() {
+            alert("Share your progress with friends!");
+        }
 
-		// Bird actions and resource management
-		function performAction(bird, action) {
-			if (bird.AP >= 1) {
-				bird.AP--;
-				// Perform action (e.g., attack, defend, recruit)
-				switch (action) {
-					case 'attack':
-						// Attack logic
-						break;
-					case 'defend':
-						// Defend logic
-						break;
-					case 'recruit':
-						// Recruit logic
-						break;
-				}
-			}
-		}
+        // Show leaderboards function
+        function showLeaderboards() {
+            alert("Displaying leaderboards...");
+        }
 
-		// Combat system
-		function resolveCombat(attacker, defender) {
-			// Detailed combat logic, including attack/defense stats, elemental weaknesses, and special moves
-		}
+        // Show settings function
+        function showSettings() {
+            alert("Adjust your game settings here!");
+        }
 
-		// Initialize game data and load from storage
-		loadGameData();
+        // Update UI with game data
+        function updateUI() {
+            document.getElementById('currentTurn').innerText = gameData.currentTurn;
+            document.getElementById('seeds').innerText = gameData.resources.seeds;
+            document.getElementById('worms').innerText = gameData.resources.worms;
+            document.getElementById('feathers').innerText = gameData.resources.feathers;
+        }
 
-		// Game elements and event listeners
-		const gameContainer = document.getElementById('game-container');
-		// Add game elements and event listeners
+        // Initialize the game
+        function initGame() {
+            requestStoragePermission();
+            setInterval(gameLoop, 1000); // 1 second interval for game loop
+        }
 
-		// World of Avia implementation
-		const regions = {
-			Skyhaven: {},
-			Forestia: {},
-			Montavia: {},
-			Aquilaria: {}
-		};
-
-		const cities = {
-			Nestville: {},
-			TalonsPeak: {},
-			Featherfall: {},
-			Beakwater: {}
-		};
-
-		// Magic and technology implementation
-		const magic = {};
-		const technology = {};
-
-		// Balance bird abilities
-		function balanceBirdAbilities() {
-			// Logic to balance bird abilities
-		}
-
-		// Resource management
-		function manageResources() {
-			// Logic to manage resources (seeds, worms, feathers)
-		}
-
-		// Enemy AI
-		function enemyAI() {
-			// Improved enemy AI logic, making them more challenging and unpredictable
-		}
-
-		// Player choices
-		function playerChoices() {
-			// Logic for player choices, such as selecting which birds to recruit or which abilities to upgrade
-		}
-
-		// Storyline
-		function storyline() {
-			// Storyline or narrative logic, providing context and motivation for the player's progress
-		}
-
-		// Visuals and audio
-		function enhanceVisualsAndAudio()
-		// Testing and feedback
-		function testAndGatherFeedback() {
-			// Logic to test the game extensively and gather feedback from players
-		}
-
-		// Initialize game
-		function initGame() {
-			loadGameData();
-			balanceBirdAbilities();
-			manageResources();
-			enemyAI();
-			playerChoices();
-		.storyline();
-			enhanceVisualsAndAudio();
-			testAndGatherFeedback();
-		}
-
-		initGame();
-	</script>
+        initGame();
+    </script>
 </body>
 </html>
