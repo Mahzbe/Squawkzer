@@ -11,18 +11,18 @@
             margin: 0;
             padding: 0;
             text-align: center;
+            overflow: hidden;
         }
         #game-container {
             width: 90%;
             margin: 0 auto;
-            background-color: #e6f7ff;
+            background-color: rgba(230, 247, 255, 0.8);
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-        }
-        #game-container h1 {
-            font-size: 2rem;
-            margin-bottom: 20px;
+            position: relative;
+            height: 500px;
+            overflow: hidden;
         }
         #game-info {
             font-size: 1.2rem;
@@ -42,147 +42,320 @@
         .game-btn:hover {
             background-color: #0056b3;
         }
-        #permission-prompt {
-            padding: 10px;
-            background-color: #ffeb3b;
-            margin: 20px auto;
-            border-radius: 5px;
-            cursor: pointer;
+        .bird {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: #F08080; /* Base color */
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
+        .wing {
+            width: 40px;
+            height: 20px;
+            background-color: #FF4500;
+            position: absolute;
+            border-radius: 50%;
+            transform-origin: center;  
+            animation: flap 0.5s ease-in-out infinite; 
+        }
+        @keyframes flap {
+            0%, 100% { transform: rotate(30deg); }
+            50% { transform: rotate(-30deg); }
+        }
+        .eye {
+            width: 10px;
+            height: 10px;
+            background-color: black;
+            border-radius: 50%;
+            position: absolute;
+            left: 20px;
+            top: 10px;
+        }
+        .mouth {
+            width: 15px;
+            height: 5px;
+            background-color: #A0522D;
+            border-radius: 5px;
+            position: absolute;
+            left: 17px;
+            top: 32px;
+        }
+        #timer {
+            font-size: 1.2rem;
+            margin-top: 20px;
+        }
+        #background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(
+                    to bottom,
+                    rgba(240,246,250,1),
+                    rgba(240,246,250,1)
+                );
+                animation-duration :5s; 
+                animation-name :gradationAnimation ; 
+                animation-iteration-count :infinite ; 
+                z-index:-1; 
+        }
+
+        /* Add the following CSS rules for the new animation */
+        @keyframes gradationAnimation {
+          from { 
+              background-position-y :0%; 
+          } 
+          to { 
+              background-position-y :100%; 
+          } 
+      }
     </style>
 </head>
 <body>
-    <div id="game-container">
+    <div id="background"></div>
+    <div id="game-container" onclick="attractBoids(event)">
         <h1>Squawkzer</h1>
         <div id="game-info">
             <p>Current Turn: <span id="currentTurn">0</span></p>
             <p>Resources: Seeds: <span id="seeds">0</span>, Worms: <span id="worms">0</span>, Feathers: <span id="feathers">0</span></p>
+            <p>Score: <span id="score">0</span></p>
+            <div id="timer">Time Left: <span id="timeLeft">30</span> seconds</div>
+           <button class="game-btn" id="restartBtn" style="display:none;" onclick="restartGame()">Restart Game</button>
         </div>
-        <button class="game-btn" onclick="toggleMusic()">Toggle Music</button>
-        <button class="game-btn" onclick="toggleSoundEffects()">Toggle Sound Effects</button>
-        <button class="game-btn" onclick="levelUp()">Level Up</button>
-        <button class="game-btn" onclick="shareProgress()">Share Progress</button>
-        <button class="game-btn" onclick="showLeaderboards()">Show Leaderboards</button>
-        <button class="game-btn" onclick="showSettings()">Settings</button>
     </div>
 
-    <div id="permission-prompt" style="display: none;">Allow Squawkzer to store game data locally? Click to allow.</div>
-
     <script>
-        // Initial game data
-        let gameData = {
-            birds: [],
-            resources: {
-                seeds: 0,
-                worms: 0,
-                feathers: 0
-            },
-            currentTurn: 0,
-            enemyBirds: [],
-            levels: [],
-            settings: {
-                music: true,
-                soundEffects: true
-            },
-            world: {
-                region: 'Skyhaven',
-                location: 'Nestville'
-            }
-        };
+        class Boid {
+          constructor(birdElement) {
+              this.birdElement = birdElement; 
+              this.position = { x : Math.random() * (document.getElementById('game-container').clientWidth -50), y : Math.random() * (document.getElementById('game-container').clientHeight -50)};
+              this.velocity = { x : Math.random() *2-1, y : Math.random() *2-1};
+              this.maxSpeed =2; 
+              this.perceptionRadius =100; 
+          }
 
-        // Load game data from local storage
-        function loadGameData() {
-            const storedData = localStorage.getItem('squawkzerGameData');
-            if (storedData) {
-                gameData = JSON.parse(storedData);
-            }
-        }
+          update(boids,mousePosition) {
+              const forces = this.calculateFlockingForces(boids);
 
-        // Save game data to local storage
-        function saveGameData() {
-            localStorage.setItem('squawkzerGameData', JSON.stringify(gameData));
-        }
+              // Include mouse interaction for attraction/repulsion
+              if (mousePosition) {
+                  const mouseDistance = Math.sqrt(
+                      (this.position.x - mousePosition.x)**2 +
+                      (this.position.y - mousePosition.y)**2
+                  );
 
-        // Request storage permission
-        function requestStoragePermission() {
-            if (typeof Storage !== 'undefined') {
-                if (localStorage.getItem('squawkzerPermission') !== 'granted') {
-                    document.getElementById('permission-prompt').style.display = 'block';
-                    document.getElementById('permission-prompt').addEventListener('click', () => {
-                        localStorage.setItem('squawkzerPermission', 'granted');
-                        document.getElementById('permission-prompt').style.display = 'none';
-                        loadGameData();
-                    });
-                } else {
-                    loadGameData();
-                }
-            }
-        }
+                  // Implement repulsion if mouse is near
+                  if (mouseDistance<50) {
+                      const repelForce = { x:this.position.x - mousePosition.x, y:this.position.y - mousePosition.y };
+                      const repelMagnitude = Math.sqrt(repelForce.x**2 + repelForce.y**2);
+                      if (repelMagnitude >0) {
+                          repelForce.x /= repelMagnitude; 
+                          repelForce.y /= repelMagnitude; 
+                      }  
+                      repelForce.x *=2; // Increase repulsion force
+                      repelForce.y *=2; // Increase repulsion force
+                      forces.x += repelForce.x; 
+                      forces.y += repelForce.y; 
+                  }
+              }
 
-        // Game loop
-        function gameLoop() {
-            takeTurn();
-            saveGameData();
-            updateUI();
-        }
+              // Update velocity based on flocking forces
+              this.velocity.x += forces.x; 
+              this.velocity.y += forces.y; 
 
-        // Take a turn in the game
-        function takeTurn() {
-            gameData.currentTurn++;
-            // Add logic for turns
-        }
+              // Limit the velocity to max speed
+              const speed = Math.sqrt(this.velocity.x**2 + this.velocity.y**2);
+              if (speed >this.maxSpeed) {
+                  this.velocity.x = (this.velocity.x/speed)*this.maxSpeed;  
+                  this.velocity.y = (this.velocity.y/speed)*this.maxSpeed;  
+              }
 
-        // Toggle music
-        function toggleMusic() {
-            gameData.settings.music = !gameData.settings.music;
-            saveGameData();
-            alert("Music toggled: " + (gameData.settings.music ? "On" : "Off"));
-        }
+              // Update position
+              this.position.x += this.velocity.x; 
+              this.position.y += this.velocity.y; 
 
-        // Toggle sound effects
-        function toggleSoundEffects() {
-            gameData.settings.soundEffects = !gameData.settings.soundEffects;
-            saveGameData();
-            alert("Sound Effects toggled: " + (gameData.settings.soundEffects ? "On" : "Off"));
-        }
+              // Wrap around the screen
+              if (this.position.x<0) this.position.x = document.getElementById('game-container').clientWidth ; 
+              if (this.position.x > document.getElementById('game-container').clientWidth) this.position.x =0 ; 
+              if (this.position.y<0) this.position.y = document.getElementById('game-container').clientHeight ; 
+              if (this.position.y > document.getElementById('game-container').clientHeight) this.position.y =0 ; 
 
-        // Level up function
-        function levelUp() {
-            // Add level-up logic here
-            alert("Leveled Up!");
-            saveGameData();
-        }
+              // Update the bird's position in the DOM
+              this.birdElement.style.left = `${this.position.x}px`; 
+              this.birdElement.style.top = `${this.position.y}px`; 
+          }
 
-        // Share progress function
-        function shareProgress() {
-            alert("Share your progress with friends!");
-        }
+          calculateFlockingForces(boids) {
+              const forces = { x :0 , y :0}; 
+              const separationForce = { x :0 , y :0}; 
+              const alignmentForce = { x :0 , y :0}; 
+              const cohesionForce = { x :0 , y :0}; 
+              let totalNearby =0;
 
-        // Show leaderboards function
-        function showLeaderboards() {
-            alert("Displaying leaderboards...");
-        }
+              boids.forEach(boid => {
+                  const distance = Math.sqrt((this.position.x - boid.position.x)**2 + (this.position.y - boid.position.y)**2);
+                  if (boid !==this && distance<this.perceptionRadius) {
+                      totalNearby++; 
 
-        // Show settings function
-        function showSettings() {
-            alert("Adjust your game settings here!");
-        }
+                      // Separation
+                      const diff = { x:this.position.x - boid.position.x , y:this.position.y - boid.position.y};
+                      const strength = Math.max(0,1-distance/this.perceptionRadius);
+                      separationForce.x += diff.x/strength;  
+                      separationForce.y += diff.y/strength;  
 
-        // Update UI with game data
-        function updateUI() {
-            document.getElementById('currentTurn').innerText = gameData.currentTurn;
-            document.getElementById('seeds').innerText = gameData.resources.seeds;
-            document.getElementById('worms').innerText = gameData.resources.worms;
-            document.getElementById('feathers').innerText = gameData.resources.feathers;
-        }
+                      // Alignment
+                      alignmentForce.x += boid.velocity.x ;  
+                      alignmentForce.y += boid.velocity.y ;  
 
-        // Initialize the game
-        function initGame() {
-            requestStoragePermission();
-            setInterval(gameLoop, 1000); // 1 second interval for game loop
-        }
+                      // Cohesion
+                      cohesionForce.x += boid.position.x ;  
+                      cohesionForce.y += boid.position.y ;  
+                  }  
+              }); 
 
-        initGame();
-    </script>
+              if (totalNearby >0) {
+                  alignmentForce.x /= totalNearby ;  
+                  alignmentForce.y /= totalNearby ;  
+                  cohesionForce.x = (cohesionForce.x/totalNearby)-this.position.x ;  
+                  cohesionForce.y = (cohesionForce.y/totalNearby)-this.position.y ;  
+
+                  // Normalize the cohesion force
+                  const cohesionMagnitude = Math.sqrt(cohesionForce.x**2 + cohesionForce.y**2);
+                  if (cohesionMagnitude >0) {
+                      cohesionForce.x /= cohesionMagnitude* this.maxSpeed ;   
+                      cohesionForce.y /= cohesionMagnitude* this.maxSpeed ;   
+                  }  
+               }  
+
+               // Combine the forces with weights (tuning)
+               forces.x = separationForce.x*2.0 + alignmentForce.x*1.0 + cohesionForce.x*0.5;   
+               forces.y = separationForce.y*2.0 + alignmentForce.y*1.0 + cohesionForce.y*0.5;   
+
+               return forces;   
+           }
+       }
+
+       let gameData={  
+           boids:[],
+           resources:{ seeds :0 , worms :0 , feathers :0 },   
+           currentTurn :0 ,   
+           score :0 ,   
+           gameTime :30 ,   
+           timerInterval:null ,   
+           gameStarted:false ,   
+           targets :10 ,   
+           birdSpawnRate :5 ,   
+       };   
+
+       let mousePosition=null;
+
+       document.getElementById("game-container").addEventListener("mousemove", (event) => {
+           mousePosition={x:event.clientX-event.target.offsetLeft,y:event.clientY-event.target.offsetTop};
+       });
+
+       function attractBoids(event) {
+           const targetPos={x:event.clientX-event.target.offsetLeft,y:event.clientY-event.target.offsetTop};
+           gameData.boids.forEach(boid =>{  
+               const attractionForce={x:(targetPos.x-boid.position.x),y:(targetPos.y-boid.position.y)};
+               const magnitude=Math.sqrt(attractionForce.x**2+attractionForce.y**2);  
+               if(magnitude>0){  
+                   attractionForce.x /= magnitude ;   
+                   attractionForce.y /= magnitude ;   
+               }  
+               // Increase attraction strength
+               attractionForce.x *=2;   
+               attractionForce.y *=2;
+
+               boid.velocity.x += attractionForce.x ;   
+               boid.velocity.y += attractionForce.y ;   
+
+           });  
+       }
+
+       function createBoid() {
+           const boidElement=document.createElement('div');
+           boidElement.className='bird';
+           const boid=new Boid(boidElement);
+           document.getElementById('game-container').appendChild(boidElement);
+           gameData.boids.push(boid);
+           boid.update(gameData.boids,mousePosition);    
+       }
+
+       function moveBoids() {
+           gameData.boids.forEach(boid =>{    
+               boid.update(gameData.boids,mousePosition);    
+           });    
+       }
+
+       function collectResources() {    
+           const resourceType=Math.floor(Math.random() *3);   
+           switch(resourceType){    
+               case 0 : gameData.resources.seeds++; break ;
+               case1 : gameData.resources.worms++; break ;
+               case2 : gameData.resources.feathers++; break ;
+           }   
+           gameData.score++;   
+           updateUI();    
+           checkWinCondition();    
+       }
+
+       function checkWinCondition() {    
+           if(gameData.score >= gameData.targets){    
+               clearInterval(gameData.timerInterval);    
+               document.getElementById('restartBtn').style.display='inline-block';    
+               alert(`You won! You collected ${gameData.targets} resources!`);    
+               resetGame();    
+           }    
+       }
+
+       function startTimer() {    
+           gameData.timerInterval=setInterval(() =>{    
+               gameData.gameTime--;    
+               document.getElementById('timeLeft').innerText=gameData.gameTime.toString();    
+               if(gameData.gameTime <= 0){    
+                   clearInterval(gameData.timerInterval);    
+                   document.getElementById('restartBtn').style.display='inline-block';    
+                   alert(`Time's up! You collected ${gameData.score} resources!`);    
+                   resetGame();    
+               }    
+           },1000);    
+       }
+
+       function resetGame() {    
+           gameData.boids.forEach(boid =>boid.birdElement.remove());   
+           gameData.boids=[];   
+           gameData={  
+               boids:[],
+               resources:{ seeds :0 , worms :0 , feathers :0 },   
+               currentTurn :0 ,   
+               score :0 ,   
+               gameTime :30 ,   
+               gameStarted:false ,   
+               targets :10 ,   
+               birdSpawnRate :5 ,   
+           };   
+
+         updateUI();    
+      }   
+
+      function restartGame() {        
+         resetGame();        
+         document.getElementById('restartBtn').style.display='none';        
+         initGame();        
+     }
+
+     function saveGameData(){} 
+
+     function updateUI(){} 
+
+     function initGame(){} 
+
+     initGame();
+   </script>
 </body>
 </html>
